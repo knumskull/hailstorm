@@ -10,5 +10,8 @@
     creates=/etc/ovirt-engine-setup.conf.d/20-setup-ovirt-post.conf
   register: engine_setup
 
+- name: create .ovirtshellrc (for RHEV 4.x)
+  template: src=ovirtshellrc.j2 dest=/root/.ovirtshellrc mode=0600
+  when: current_lifecycle_env.rhv_version == 4
 
 
