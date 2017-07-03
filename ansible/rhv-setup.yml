@@ -1,0 +1,5 @@
+---
+- hosts: rhevm
+  gather_facts: false
+  roles:
+    - layer2_rhevm_ansible
