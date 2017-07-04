@@ -1,5 +1,11 @@
-- file: path=/etc/ovirt-engine/aaa/IPA.jks state=absent
-- file: path=/etc/ovirt-engine/aaa/IPA.properties state=absent
-- file: path=/etc/ovirt-engine/extensions.d/IPA-authz.properties state=absent
-- file: path=/etc/ovirt-engine/extensions.d/IPA-authn.properties state=absent
-- service: name=ovirt-engine state=restarted
+- name: remove IPA.jks
+  file: path=/etc/ovirt-engine/aaa/IPA.jks state=absent
+- name: remove IPA.properties
+  file: path=/etc/ovirt-engine/aaa/IPA.properties state=absent
+- name: remove IPA-authz.properties
+  file: path=/etc/ovirt-engine/extensions.d/IPA-authz.properties state=absent
+- name: remove IPA-authn.properties
+  file: path=/etc/ovirt-engine/extensions.d/IPA-authn.properties state=absent
+- name: restart ovirt-engine service
+  service: name=ovirt-engine state=restarted
+  ignore_errors: true
