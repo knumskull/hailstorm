@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Setup Datacenter and Clusterconfiguration
+ansible-playbook -i hosts -e @config/hailstorm_config.yml -e @config/infrastructure_config.yml -e @config/storm2.coe.muc.redhat.com.yml rhv-deploy-cluster.yml

@@ -1,0 +1,2 @@
+#!/bin/bash
+ansible-playbook -i hosts -e @config/hailstorm_config.yml -e @config/infrastructure_config.yml -e @config/storm2.coe.muc.redhat.com.yml create-02-rhev.yml --tags layer1,vm,dns,rhel

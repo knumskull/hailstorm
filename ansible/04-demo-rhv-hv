@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Add Hypervisors to RHV cluster
+ansible-playbook -i hosts -e @config/hailstorm_config.yml -e @config/infrastructure_config.yml -e @config/storm2.coe.muc.redhat.com.yml rhv-deploy-hv.yml

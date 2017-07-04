@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Install RHV packages and run engine-setup
+ansible-playbook -i hosts -e @config/hailstorm_config.yml -e @config/infrastructure_config.yml -e @config/storm2.coe.muc.redhat.com.yml rhv-setup.yml
