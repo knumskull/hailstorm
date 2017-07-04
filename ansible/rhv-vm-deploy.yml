@@ -1,0 +1,42 @@
+---
+- hosts: rhevm
+  gather_facts: false
+
+  vars:
+    engine_url: "https://{{ rhv_dns_domain }}/ovirt-engine/api"
+    username: admin@internal
+   
+    engine_cafile: /etc/pki/ovirt-engine/ca.pem
+    datacenter: Default
+    cluster: Default
+    
+  tasks:
+    - block:
+       - name: obtain SSO token
+         no_log: true
+         ovirt_auth:
+           url: "{{ engine_url }}"
+           username: "{{ username }}"
+           password: "{{ root_password }}"
+           ca_file: "{{ engine_cafile }}"
+
+       - name: create new VM
+         ovirt_vms:
+           auth: "{{ ovirt_auth }}"
+           name: "{{ item }}"
+           cluster: "Default"
+           template: "RHEL7"
+           cloud_init:
+             user_name: root
+             root_password: "{{ root_password }}"
+         with_items:
+           - "system-1"
+           - "system-2"
+           - "system-3"
+           - "system-4"
+           - "system-5"
+      always:
+        - name: Revoke the SSO token
+          ovirt_auth:
+            state: absent
+            ovirt_auth: "{{ ovirt_auth }}"

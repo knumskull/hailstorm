@@ -1,0 +1,40 @@
+---
+- hosts: rhevm
+  gather_facts: false
+
+  vars:
+    engine_url: "https://{{ rhv_dns_domain }}/ovirt-engine/api"
+    username: admin@internal
+   
+    engine_cafile: /etc/pki/ovirt-engine/ca.pem
+    datacenter: Default
+    cluster: Default
+    
+  tasks:
+    - block:
+       - name: obtain SSO token
+         no_log: true
+         ovirt_auth:
+           url: "{{ engine_url }}"
+           username: "{{ username }}"
+           password: "{{ root_password }}"
+           ca_file: "{{ engine_cafile }}"
+
+       - name: Create storage domains
+         ovirt_storage_domains:
+           auth: "{{ ovirt_auth }}"
+           name: "{{ item.domainname }}"
+           description: "{{ item.description }}"
+           data_center: "{{ datacenter }}"
+           domain_function: "{{ item.type }}"
+           host: "rhevh1"
+           nfs:
+             address: "{{ infrastructure_address_nfs_server }}"
+             path: "{{ item.path }}"
+         with_items: "{{ rhev_storage_domains }}"
+
+      always:
+        - name: Revoke the SSO token
+          ovirt_auth:
+            state: absent
+            ovirt_auth: "{{ ovirt_auth }}"

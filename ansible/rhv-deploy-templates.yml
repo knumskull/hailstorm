@@ -1,0 +1,9 @@
+- hosts: rhevm
+  remote_user: root
+  gather_facts: false
+  pre_tasks:
+    - setup:
+      tags: [ 'layer2', 'rhev','rhevm', 'rhevm-ldap','rhevm-storage' ]
+  roles:
+    - { role: layer2_rhevm_templates, tags: [ 'layer2', 'rhev', 'rhevm', 'rhevm-templates' ], mode: create }
+

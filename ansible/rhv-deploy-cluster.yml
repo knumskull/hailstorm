@@ -43,31 +43,6 @@
            ha_reservation: true
            memory_policy: server
 
-       - name: join hypervisors to cluster "{{ cluster }}"
-         ovirt_hosts:
-           auth: "{{ ovirt_auth }}"
-           cluster: "{{ cluster }}"
-           name: "{{ item.name }}"
-           address: "{{ item.addr }}"
-           password: "{{ root_password }}"
-         with_items:
-           - { name: rhevh1, addr: 192.168.101.13 }
-           - { name: rhevh2, addr: 192.168.101.14 }
-           - { name: rhevh3, addr: 192.168.101.15 }
-
-       - name: Create storage domains
-         ovirt_storage_domains:
-           auth: "{{ ovirt_auth }}"
-           name: "{{ item.domainname }}"
-           description: "{{ item.desc }}"
-           data_center: "{{ datacenter }}"
-           domain_function: "{{ item.type }}"
-           host: "rhevh1"
-           nfs:
-             address: "{{ infrastructure_address_nfs_server }}"
-             path: "{{ item.path }}"
-         with_items: "{{ rhev_storage_domains }}"
-
       always:
         - name: Revoke the SSO token
           ovirt_auth:

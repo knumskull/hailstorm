@@ -1,0 +1,39 @@
+---
+- hosts: rhevm
+  gather_facts: false
+
+  vars:
+    engine_url: "https://{{ rhv_dns_domain }}/ovirt-engine/api"
+    username: admin@internal
+   
+    engine_cafile: /etc/pki/ovirt-engine/ca.pem
+    datacenter: Default
+    cluster: Default
+    
+  tasks:
+    - block:
+       - name: obtain SSO token
+         no_log: true
+         ovirt_auth:
+           url: "{{ engine_url }}"
+           username: "{{ username }}"
+           password: "{{ root_password }}"
+           ca_file: "{{ engine_cafile }}"
+
+       - name: join hypervisors to cluster "{{ cluster }}"
+         ovirt_hosts:
+           auth: "{{ ovirt_auth }}"
+           cluster: "{{ cluster }}"
+           name: "{{ item.name }}"
+           address: "{{ item.addr }}"
+           password: "{{ root_password }}"
+         with_items:
+           - { name: rhevh1, addr: 192.168.101.13 }
+           - { name: rhevh2, addr: 192.168.101.14 }
+           - { name: rhevh3, addr: 192.168.101.15 }
+
+      always:
+        - name: Revoke the SSO token
+          ovirt_auth:
+            state: absent
+            ovirt_auth: "{{ ovirt_auth }}"
