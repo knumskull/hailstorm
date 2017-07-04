@@ -1,0 +1,3 @@
+cloudinit:
+  user_name: root
+  root_password: "{{ root_password }}"
