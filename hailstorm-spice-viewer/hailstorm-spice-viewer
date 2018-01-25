@@ -1,0 +1,140 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+import select
+import subprocess
+import tempfile
+from random import randint
+
+import logging
+
+import time
+
+try:
+    import SocketServer
+except ImportError:
+    import socketserver as SocketServer
+
+import os
+import ConfigParser
+import sys
+import paramiko
+import thread
+
+
+g_verbose = True
+
+
+def get_config_from_file(configfile):
+    config = ConfigParser.ConfigParser()
+    with open(configfile):
+        config.read(configfile)
+
+    return config
+
+
+def verbose(s):
+    if g_verbose:
+        print(s)
+
+
+class Handler(SocketServer.BaseRequestHandler):
+    def handle(self):
+        try:
+            chan = self.ssh_transport.open_channel('direct-tcpip',
+                                                   (self.chain_host, self.chain_port),
+                                                   self.request.getpeername())
+        except Exception as e:
+            verbose('Incoming request to %s:%d failed: %s' % (self.chain_host,
+                                                              self.chain_port,
+                                                              repr(e)))
+            return
+        if chan is None:
+            verbose('Incoming request to %s:%d was rejected by the SSH server.' %
+                    (self.chain_host, self.chain_port))
+            return
+
+        verbose('Connected!  Tunnel open %r -> %r -> %r' % (self.request.getpeername(),
+                                                            chan.getpeername(), (self.chain_host, self.chain_port)))
+        while True:
+            r, w, x = select.select([self.request, chan], [], [])
+            if self.request in r:
+                data = self.request.recv(1024)
+                if len(data) == 0:
+                    break
+                chan.send(data)
+            if chan in r:
+                data = chan.recv(1024)
+                if len(data) == 0:
+                    break
+                self.request.send(data)
+
+        peername = self.request.getpeername()
+        chan.close()
+        self.request.close()
+        verbose('Tunnel closed from %r' % (peername,))
+
+
+class ForwardServer (SocketServer.ThreadingTCPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
+def forward_tunnel(local_port, remote_host, remote_port, transport):
+    # this is a little convoluted, but lets me configure things for the Handler
+    # object.  (SocketServer doesn't give Handlers any way to access the outer
+    # server normally.)
+    class SubHandler (Handler):
+        chain_host = remote_host
+        chain_port = remote_port
+        ssh_transport = transport
+    ForwardServer(('', local_port), SubHandler).serve_forever()
+
+
+def main():
+    hailstorm_config = get_config_from_file(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'config.ini'))
+    hailstorm_host = hailstorm_config.get('hailstorm', 'master_host')
+    hailstorm_private_key = hailstorm_config.get('hailstorm', 'private_key')
+
+    console_file = os.path.abspath(sys.argv[1])
+    config = get_config_from_file(console_file)
+
+    # grab original remote host and port
+    hailstorm_remote_host = config.get('virt-viewer', 'host')
+    hailstorm_remote_port = config.get('virt-viewer', 'tls-port')
+
+    # define remote_port for SSH connection
+    remote_host = hailstorm_host
+    remote_port = int(hailstorm_remote_port) + 1000 + randint(0, 99)
+
+    # define connection
+    config.set('virt-viewer', 'tls-port', remote_port)
+    config.set('virt-viewer', 'host', 'localhost')
+
+    client = paramiko.SSHClient()
+    client.load_system_host_keys()
+    client.set_missing_host_key_policy(paramiko.WarningPolicy())
+
+    print('Connecting to ssh host %s:%d ...' % (remote_host, 22))
+    try:
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(remote_host, 22, username='root', look_for_keys=False, key_filename=hailstorm_private_key)
+    except Exception as e:
+        print('*** Failed to connect to %s:%d: %r' % (remote_host, 22, e))
+        sys.exit(1)
+
+    print('Now forwarding port %d to %s:%d ...' % (int(remote_port), hailstorm_remote_host, int(hailstorm_remote_port)))
+
+    thread.start_new_thread(forward_tunnel, (int(remote_port), hailstorm_remote_host, int(hailstorm_remote_port), client.get_transport()))
+
+    modified_console_file = tempfile.NamedTemporaryFile(delete=False, suffix='.vv')
+    config.write(modified_console_file)
+    modified_console_file.close()
+
+    subprocess.call("/usr/bin/remote-viewer %s" % modified_console_file.name, shell=True)
+    os.unlink(modified_console_file.name)
+
+
+if __name__ == "__main__":
+    main()
+
+
